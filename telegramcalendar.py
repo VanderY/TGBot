@@ -33,16 +33,22 @@ def create_calendar(year=None, month=None):
     if year == None: year = now.year
     if month == None: month = now.month
     data_ignore = create_callback_data("IGNORE", year, month, 0)
-    keyboard = []
+    keyboard = InlineKeyboardMarkup(row_width=7)
     # First row - Month and Year
     row = []
-    row.append(InlineKeyboardButton(calendar.month_name[month] + " " + str(year), callback_data=data_ignore))
-    keyboard.append(row)
+    keyboard.add(InlineKeyboardButton(calendar.month_name[month] + " " + str(year), callback_data=data_ignore))
     # Second row - Week Days
     row = []
-    for day in ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]:
+    for day in ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]:
         row.append(InlineKeyboardButton(day, callback_data=data_ignore))
-    keyboard.append(row)
+    slot1 = row[0]
+    slot2 = row[1]
+    slot3 = row[2]
+    slot4 = row[3]
+    slot5 = row[4]
+    slot6 = row[5]
+    slot7 = row[6]
+    keyboard.row(slot1, slot2, slot3, slot4, slot5, slot6, slot7)
 
     my_calendar = calendar.monthcalendar(year, month)
     for week in my_calendar:
@@ -52,15 +58,23 @@ def create_calendar(year=None, month=None):
                 row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
             else:
                 row.append(InlineKeyboardButton(str(day), callback_data=create_callback_data("DAY", year, month, day)))
-        keyboard.append(row)
+        slot1 = row[0]
+        slot2 = row[1]
+        slot3 = row[2]
+        slot4 = row[3]
+        slot5 = row[4]
+        slot6 = row[5]
+        slot7 = row[6]
+        keyboard.row(slot1, slot2, slot3, slot4, slot5, slot6, slot7)
     # Last row - Buttons
     row = []
-    row.append(InlineKeyboardButton("<", callback_data=create_callback_data("PREV-MONTH", year, month, day)))
-    row.append(InlineKeyboardButton(" ", callback_data=data_ignore))
-    row.append(InlineKeyboardButton(">", callback_data=create_callback_data("NEXT-MONTH", year, month, day)))
-    keyboard.append(row)
+    slot1 = InlineKeyboardButton("<", callback_data=create_callback_data("PREV-MONTH", year, month, day))
+    slot2 = InlineKeyboardButton(" ", callback_data=data_ignore)
+    slot3 = InlineKeyboardButton(">", callback_data=create_callback_data("NEXT-MONTH", year, month, day))
+    keyboard.row(slot1, slot2, slot3)
+    # keyboard.add(row)
 
-    return InlineKeyboardMarkup(keyboard)
+    return keyboard
 
 
 def process_calendar_selection(bot, query):
@@ -72,31 +86,40 @@ def process_calendar_selection(bot, query):
     :return: Returns a tuple (Boolean,datetime.datetime), indicating if a date is selected
                 and returning the date if so.
     """
-    ret_data = (False, None)
-    # query = update.callback_query
+    choose = InlineKeyboardMarkup(row_width=2)
+    yes = InlineKeyboardButton('Да', callback_data='yes')
+    no = InlineKeyboardButton('Нет', callback_data='no')
+    choose.row(yes, no)
+    ret_data = (bot.answer_callback_query(callback_query_id=query.id),
+                False, None)
     (action, year, month, day) = separate_callback_data(query.data)
     curr = datetime.datetime(int(year), int(month), 1)
     if action == "IGNORE":
-        bot.answer_callback_query(callback_query_id=query.id)
+        response = bot.answer_callback_query(callback_query_id=query.id)
+        ret_data = response, False, None
     elif action == "DAY":
-        bot.edit_message_text(text=query.message.text,
-                              chat_id=query.message.chat_id,
-                              message_id=query.message.message_id
-                              )
-        ret_data = True, datetime.datetime(int(year), int(month), int(day))
+        response = bot.edit_message_text(text=f'Вы уверены, что хотите записаться на {day}.{month}?',
+                                         chat_id=query.message.chat.id,
+                                         message_id=query.message.message_id,
+                                         reply_markup=choose
+                                         )
+        ret_data = response, True, datetime.datetime(int(year), int(month), int(day))
     elif action == "PREV-MONTH":
         pre = curr - datetime.timedelta(days=1)
-        bot.edit_message_text(text=query.message.text,
-                              chat_id=query.message.chat_id,
-                              message_id=query.message.message_id,
-                              reply_markup=create_calendar(int(pre.year), int(pre.month)))
+        response = bot.edit_message_text(text=query.message.text,
+                                         chat_id=query.message.chat.id,
+                                         message_id=query.message.message_id,
+                                         reply_markup=create_calendar(int(pre.year), int(pre.month)))
+        ret_data = response, False, None
     elif action == "NEXT-MONTH":
         ne = curr + datetime.timedelta(days=31)
-        bot.edit_message_text(text=query.message.text,
-                              chat_id=query.message.chat_id,
-                              message_id=query.message.message_id,
-                              reply_markup=create_calendar(int(ne.year), int(ne.month)))
+        response = bot.edit_message_text(text=query.message.text,
+                                         chat_id=query.message.chat.id,
+                                         message_id=query.message.message_id,
+                                         reply_markup=create_calendar(int(ne.year), int(ne.month)))
+        ret_data = response, False, None
     else:
-        bot.answer_callback_query(callback_query_id=query.id, text="Something went wrong!")
+        response = bot.answer_callback_query(callback_query_id=query.id, text="Something went wrong!")
+        ret_data = response, False, None
         # UNKNOWN
     return ret_data
