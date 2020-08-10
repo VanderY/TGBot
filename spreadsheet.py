@@ -7,13 +7,10 @@ client = gspread.authorize(creds)
 
 sheet = client.open('TestSpreadsheet').sheet1
 
-mevl = sheet.get_all_records()
+
+# mevl = sheet.get_all_records()
 # print(mevl)
 
 
 def insert_data(data):
     sheet.insert_row(data, 2)
-
-
-insert_data(["kek", "rofl", "cringe"])
-
